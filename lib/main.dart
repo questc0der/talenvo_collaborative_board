@@ -1,6 +1,6 @@
 import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
-import 'package:talenvo_collaborative_board/features/boards/UI/widgets/board_widget.dart';
+import 'package:talenvo_collaborative_board/features/boards/presentation/pages/boards_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,9 +17,11 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.deepPurple)),
-      home: const Board(),
+      title: 'Talenvo Collaborative Board',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+      ),
+      home: BoardsPage(),
     );
   }
 }
