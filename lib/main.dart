@@ -1,14 +1,10 @@
-import 'package:flutter/widget_previews.dart';
 import 'package:flutter/material.dart';
-import 'package:talenvo_collaborative_board/features/boards/presentation/pages/boards_page.dart';
+import 'package:talenvo_collaborative_board/config/providers/app_providers.dart';
+import 'package:talenvo_collaborative_board/config/routes/app_router.dart';
+import 'package:talenvo_collaborative_board/config/routes/app_routes.dart';
 
 void main() {
   runApp(const MyApp());
-}
-
-@Preview(name: "Home Page")
-Widget homePagePreview() {
-  return const MyApp();
 }
 
 class MyApp extends StatelessWidget {
@@ -16,12 +12,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Talenvo Collaborative Board',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+    return AppProviders.wrap(
+      MaterialApp(
+        title: 'Talenvo Collaborative Board',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+          useMaterial3: true,
+        ),
+        initialRoute: AppRoutes.root,
+        onGenerateRoute: AppRouter.onGenerateRoute,
       ),
-      home: BoardsPage(),
     );
   }
 }
