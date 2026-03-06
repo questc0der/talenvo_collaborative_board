@@ -9,57 +9,18 @@ class BoardsDashboardPage extends StatelessWidget {
   const BoardsDashboardPage({super.key});
 
   Future<void> _openCreateBoardDialog(BuildContext context) async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    final confirmed = await showDialog<bool>(
+    final result = await showDialog<_CreateBoardInput>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Create board'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Create'),
-            ),
-          ],
-        );
-      },
+      builder: (_) => const _CreateBoardDialog(),
     );
 
-    final title = titleController.text.trim();
-    final description = descriptionController.text.trim();
-    titleController.dispose();
-    descriptionController.dispose();
-
-    if (confirmed != true ||
-        title.isEmpty ||
-        description.isEmpty ||
-        !context.mounted) {
+    if (result == null || !context.mounted) {
       return;
     }
 
     await context.read<BoardsController>().createBoard(
-      title: title,
-      description: description,
+      title: result.title,
+      description: result.description,
     );
   }
 
@@ -158,6 +119,73 @@ class BoardsDashboardPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _CreateBoardInput {
+  const _CreateBoardInput({required this.title, required this.description});
+
+  final String title;
+  final String description;
+}
+
+class _CreateBoardDialog extends StatefulWidget {
+  const _CreateBoardDialog();
+
+  @override
+  State<_CreateBoardDialog> createState() => _CreateBoardDialogState();
+}
+
+class _CreateBoardDialogState extends State<_CreateBoardDialog> {
+  final _titleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final title = _titleController.text.trim();
+    final description = _descriptionController.text.trim();
+    if (title.isEmpty || description.isEmpty) {
+      return;
+    }
+
+    Navigator.of(
+      context,
+    ).pop(_CreateBoardInput(title: title, description: description));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Create board'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(labelText: 'Title'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(labelText: 'Description'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Create')),
+      ],
     );
   }
 }

@@ -12,37 +12,19 @@ class BoardDetailPage extends StatelessWidget {
   final BoardEntity board;
 
   Future<void> _showCreateColumnDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    final confirmed = await showDialog<bool>(
+    final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create column'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(labelText: 'Column name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
+      builder: (_) => const _CreateColumnDialog(),
     );
 
-    final name = controller.text.trim();
-    controller.dispose();
-
-    if (confirmed == true && name.isNotEmpty && context.mounted) {
-      await context.read<BoardDetailController>().createColumn(
-        boardId: board.id,
-        name: name,
-      );
+    if (name == null || !context.mounted) {
+      return;
     }
+
+    await context.read<BoardDetailController>().createColumn(
+      boardId: board.id,
+      name: name,
+    );
   }
 
   Future<void> _showUpsertCardDialog(
@@ -50,105 +32,34 @@ class BoardDetailPage extends StatelessWidget {
     ColumnEntity column, {
     CardEntity? existing,
   }) async {
-    final titleController = TextEditingController(text: existing?.title ?? '');
-    final descriptionController = TextEditingController(
-      text: existing?.description ?? '',
-    );
-    final tagsController = TextEditingController(
-      text: existing?.tags.join(', ') ?? '',
-    );
-    final dueDateController = TextEditingController(
-      text: existing?.dueDate != null
-          ? DateFormat('yyyy-MM-dd').format(existing!.dueDate!)
-          : '',
-    );
-
-    final confirmed = await showDialog<bool>(
+    final input = await showDialog<_UpsertCardInput>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(existing == null ? 'Create card' : 'Edit card'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(labelText: 'Title'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: tagsController,
-                decoration: const InputDecoration(
-                  labelText: 'Tags (comma separated)',
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: dueDateController,
-                decoration: const InputDecoration(
-                  labelText: 'Due date (YYYY-MM-DD)',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(existing == null ? 'Create' : 'Save'),
-          ),
-        ],
-      ),
+      builder: (_) => _UpsertCardDialog(existing: existing),
     );
 
-    final title = titleController.text.trim();
-    final description = descriptionController.text.trim();
-    final tags = tagsController.text
-        .split(',')
-        .map((value) => value.trim())
-        .where((value) => value.isNotEmpty)
-        .toList();
-    final dueDateText = dueDateController.text.trim();
-
-    titleController.dispose();
-    descriptionController.dispose();
-    tagsController.dispose();
-    dueDateController.dispose();
-
-    if (confirmed != true || title.isEmpty || !context.mounted) {
+    if (input == null || !context.mounted) {
       return;
     }
-
-    final dueDate = dueDateText.isEmpty ? null : DateTime.tryParse(dueDateText);
 
     final controller = context.read<BoardDetailController>();
     if (existing == null) {
       await controller.createCard(
         boardId: board.id,
         columnId: column.id,
-        title: title,
-        description: description,
-        tags: tags,
-        dueDate: dueDate,
+        title: input.title,
+        description: input.description,
+        tags: input.tags,
+        dueDate: input.dueDate,
       );
     } else {
       await controller.editCard(
         boardId: board.id,
         cardId: existing.id,
         columnId: column.id,
-        title: title,
-        description: description,
-        tags: tags,
-        dueDate: dueDate,
+        title: input.title,
+        description: input.description,
+        tags: input.tags,
+        dueDate: input.dueDate,
       );
     }
   }
@@ -158,6 +69,7 @@ class BoardDetailPage extends StatelessWidget {
     final dateFormat = DateFormat('MMM d');
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: Text(board.name),
         actions: [
@@ -343,6 +255,180 @@ class BoardDetailPage extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _CreateColumnDialog extends StatefulWidget {
+  const _CreateColumnDialog();
+
+  @override
+  State<_CreateColumnDialog> createState() => _CreateColumnDialogState();
+}
+
+class _CreateColumnDialogState extends State<_CreateColumnDialog> {
+  final _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      return;
+    }
+    Navigator.of(context).pop(name);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      scrollable: true,
+      title: const Text('Create column'),
+      content: TextField(
+        controller: _controller,
+        decoration: const InputDecoration(labelText: 'Column name'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Create')),
+      ],
+    );
+  }
+}
+
+class _UpsertCardInput {
+  const _UpsertCardInput({
+    required this.title,
+    required this.description,
+    required this.tags,
+    required this.dueDate,
+  });
+
+  final String title;
+  final String description;
+  final List<String> tags;
+  final DateTime? dueDate;
+}
+
+class _UpsertCardDialog extends StatefulWidget {
+  const _UpsertCardDialog({this.existing});
+
+  final CardEntity? existing;
+
+  @override
+  State<_UpsertCardDialog> createState() => _UpsertCardDialogState();
+}
+
+class _UpsertCardDialogState extends State<_UpsertCardDialog> {
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _tagsController;
+  late final TextEditingController _dueDateController;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(
+      text: widget.existing?.title ?? '',
+    );
+    _descriptionController = TextEditingController(
+      text: widget.existing?.description ?? '',
+    );
+    _tagsController = TextEditingController(
+      text: widget.existing?.tags.join(', ') ?? '',
+    );
+    _dueDateController = TextEditingController(
+      text: widget.existing?.dueDate != null
+          ? DateFormat('yyyy-MM-dd').format(widget.existing!.dueDate!)
+          : '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _tagsController.dispose();
+    _dueDateController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      return;
+    }
+
+    final dueDateText = _dueDateController.text.trim();
+    final dueDate = dueDateText.isEmpty ? null : DateTime.tryParse(dueDateText);
+    final tags = _tagsController.text
+        .split(',')
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toList();
+
+    Navigator.of(context).pop(
+      _UpsertCardInput(
+        title: title,
+        description: _descriptionController.text.trim(),
+        tags: tags,
+        dueDate: dueDate,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isCreate = widget.existing == null;
+
+    return AlertDialog(
+      scrollable: true,
+      title: Text(isCreate ? 'Create card' : 'Edit card'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(labelText: 'Title'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _descriptionController,
+            decoration: const InputDecoration(labelText: 'Description'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _tagsController,
+            decoration: const InputDecoration(
+              labelText: 'Tags (comma separated)',
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _dueDateController,
+            decoration: const InputDecoration(
+              labelText: 'Due date (YYYY-MM-DD)',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _submit,
+          child: Text(isCreate ? 'Create' : 'Save'),
+        ),
+      ],
     );
   }
 }

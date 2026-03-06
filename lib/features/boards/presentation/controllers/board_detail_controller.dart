@@ -22,6 +22,7 @@ class BoardDetailController extends ChangeNotifier {
   List<TeammateEntity> _teammates = const [];
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isDisposed = false;
 
   List<ColumnEntity> get columns => _columns;
   Map<String, List<CardEntity>> get cardsByColumn => _cardsByColumn;
@@ -32,14 +33,7 @@ class BoardDetailController extends ChangeNotifier {
   Future<void> loadBoard(String boardId) async {
     _setLoading(true);
     try {
-      _columns = await _columnRepository.getColumns(boardId);
-      _teammates = await _teammateRepository.getTeammates(boardId);
-      final next = <String, List<CardEntity>>{};
-      for (final column in _columns) {
-        next[column.id] = await _cardRepository.getCards(column.id);
-      }
-      _cardsByColumn = next;
-      _errorMessage = null;
+      await _reloadBoardData(boardId);
     } catch (error) {
       _errorMessage = _cleanError(error);
     } finally {
@@ -54,7 +48,7 @@ class BoardDetailController extends ChangeNotifier {
     _setLoading(true);
     try {
       await _columnRepository.createColumn(boardId: boardId, name: name);
-      await loadBoard(boardId);
+      await _reloadBoardData(boardId);
     } finally {
       _setLoading(false);
     }
@@ -77,7 +71,7 @@ class BoardDetailController extends ChangeNotifier {
         tags: tags,
         dueDate: dueDate,
       );
-      await loadBoard(boardId);
+      await _reloadBoardData(boardId);
     } finally {
       _setLoading(false);
     }
@@ -102,7 +96,7 @@ class BoardDetailController extends ChangeNotifier {
         tags: tags,
         dueDate: dueDate,
       );
-      await loadBoard(boardId);
+      await _reloadBoardData(boardId);
     } finally {
       _setLoading(false);
     }
@@ -116,7 +110,7 @@ class BoardDetailController extends ChangeNotifier {
     _setLoading(true);
     try {
       await _cardRepository.deleteCard(cardId: cardId, columnId: columnId);
-      await loadBoard(boardId);
+      await _reloadBoardData(boardId);
     } finally {
       _setLoading(false);
     }
@@ -135,15 +129,35 @@ class BoardDetailController extends ChangeNotifier {
         columnId: columnId,
         assigneeName: assigneeName,
       );
-      await loadBoard(boardId);
+      await _reloadBoardData(boardId);
     } finally {
       _setLoading(false);
     }
   }
 
+  Future<void> _reloadBoardData(String boardId) async {
+    _columns = await _columnRepository.getColumns(boardId);
+    _teammates = await _teammateRepository.getTeammates(boardId);
+    final next = <String, List<CardEntity>>{};
+    for (final column in _columns) {
+      next[column.id] = await _cardRepository.getCards(column.id);
+    }
+    _cardsByColumn = next;
+    _errorMessage = null;
+  }
+
   void _setLoading(bool value) {
+    if (_isDisposed) {
+      return;
+    }
     _isLoading = value;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 
   String _cleanError(Object error) {

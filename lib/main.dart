@@ -14,6 +14,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppProviders.wrap(
       MaterialApp(
+        debugShowCheckedModeBanner: false,
         title: 'Talenvo Collaborative Board',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),

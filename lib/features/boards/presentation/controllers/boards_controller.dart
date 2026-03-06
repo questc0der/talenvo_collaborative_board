@@ -10,6 +10,7 @@ class BoardsController extends ChangeNotifier {
   List<BoardEntity> _boards = const [];
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isDisposed = false;
 
   List<BoardEntity> get boards => _boards;
   bool get isLoading => _isLoading;
@@ -31,10 +32,10 @@ class BoardsController extends ChangeNotifier {
     try {
       _boards = await _boardRepository.getBoards();
       _errorMessage = null;
-      notifyListeners();
+      _notifySafely();
     } catch (error) {
       _errorMessage = _cleanError(error);
-      notifyListeners();
+      _notifySafely();
     }
   }
 
@@ -73,8 +74,24 @@ class BoardsController extends ChangeNotifier {
   }
 
   void _setLoading(bool value) {
+    if (_isDisposed) {
+      return;
+    }
     _isLoading = value;
+    _notifySafely();
+  }
+
+  void _notifySafely() {
+    if (_isDisposed) {
+      return;
+    }
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
   }
 
   String _cleanError(Object error) {
